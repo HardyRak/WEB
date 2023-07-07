@@ -11,8 +11,20 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 
 public class FrontServlet extends HttpServlet {
+    RequestDispatcher dispat;
 
-
+    public RequestDispatcher getDispat() {
+        return this.dispat;
+    }
+    public void setDispat(RequestDispatcher dispat) {
+        this.dispat = dispat;
+    }
+    
+    public void redirect(String indexOfFile,HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        this.setDispat(req.getRequestDispatcher(indexOfFile));
+        this.getDispat().forward(req,resp);
+    }
+    
     protected void processRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         PrintWriter out = resp.getWriter();
         String incommingURL = String.valueOf(req.getRequestURL());
@@ -21,7 +33,6 @@ public class FrontServlet extends HttpServlet {
     }
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-
 
         this.processRequest(req,resp);
     }
