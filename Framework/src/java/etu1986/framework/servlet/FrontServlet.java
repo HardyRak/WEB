@@ -1,52 +1,44 @@
 package etu1986.framework.servlet;
 
 import etu1986.framework.Mapping;
-import etu1986.framework.MethodAnnotation;
+import etu1986.framework.ModelView;
 import etu1986.framework.annotation.Url;
+
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.File;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.*;
+
+@WebServlet(name = "FrontServlet", value = "/")
 public class FrontServlet extends HttpServlet {
-    RequestDispatcher dispat;
-
-    public RequestDispatcher getDispat() {
-        return this.dispat;
-    }
-    public void setDispat(RequestDispatcher dispat) {
-        this.dispat = dispat;
-    }
     private HashMap<String, Mapping> MappingUrls;
+
     public HashMap<String, Mapping> getMappingUrls() {
         return MappingUrls;
     }
-
     public void setMappingUrls(HashMap<String, Mapping> mappingUrls) {
         MappingUrls = mappingUrls;
     }
+
+
     @Override
     public void init() throws ServletException {
         try {
@@ -56,50 +48,58 @@ public class FrontServlet extends HttpServlet {
             throw new RuntimeException(e);
         }
     }
-    public void redirect(String indexOfFile,HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        this.setDispat(req.getRequestDispatcher(indexOfFile));
-        this.getDispat().forward(req,resp);
+
+    public void redirect(String indexOfFile, HttpServletRequest req, HttpServletResponse rep) throws ServletException, IOException {
+        RequestDispatcher dispatcher = req.getRequestDispatcher(indexOfFile);
+        dispatcher.forward(req, rep);
     }
-    
-    protected void processRequest(HttpServletRequest req, HttpServletResponse resp) throws Exception {
-        PrintWriter out = resp.getWriter();
+
+    public void fillingAttribute(ModelView modelView,HttpServletRequest req, HttpServletResponse rep){
+        Set<String> mvKey = modelView.getData().keySet();
+        for(String key : mvKey){
+            req.setAttribute(key, modelView.getData().get(key));
+        }
+    }
+
+    protected void processRequest(HttpServletRequest req, HttpServletResponse rep) throws Exception {
+        PrintWriter out = rep.getWriter();
         String incomingURL = String.valueOf(req.getRequestURL());
         String target = this.getTarget(incomingURL);
 
-        //System.out.println("Traitement URL");
-
         Mapping mapping = this.getMappingUrls().get(target);
         if(mapping != null){
-            //System.out.println("Class: "+mapping.getClassName()+" Method: "+mapping.getMethod());
             Class<?> clazz = Class.forName(mapping.getClassName());
             Constructor<?> constructor = clazz.getConstructor();
             Object clone = constructor.newInstance();
             Method method = clazz.getMethod(mapping.getMethod());
 
-            String desti = (String) method.invoke(clone);
-            this.redirect(desti, req, resp);
+            Object result = method.invoke(clone);
+            if(result instanceof ModelView){
+                ModelView modelView = (ModelView) result;
+                this.fillingAttribute(modelView, req, rep);
+                this.redirect(modelView.getView(), req, rep);
+            }
         }else{
             //System.out.println("Url inconnu");
             throw new Exception("Url inconnu");
         }
     }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
-            this.processRequest(req,resp);
-        } catch (Exception ex) {
-            Logger.getLogger(FrontServlet.class.getName()).log(Level.SEVERE, null, ex);
+            this.processRequest(req, resp);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-
-
         try {
-            this.processRequest(req,resp);
-        } catch (Exception ex) {
-            Logger.getLogger(FrontServlet.class.getName()).log(Level.SEVERE, null, ex);
+            this.processRequest(req, resp);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -109,13 +109,9 @@ public class FrontServlet extends HttpServlet {
 
     private String getTarget(String URL){
         URL = removeHttpProtocoleStr(URL);
-
-        if(URL.toLowerCase().contains("_war")){
-            System.out.println("'war' artifact detected");
-            return URL.split("/")[2];
-        }else{
-            return URL.split("/")[1];
-        }
+        String[] urlsplitted = URL.split("/");
+        //System.out.println("Target >>> "+urlsplitted[urlsplitted.length-1]);
+        return urlsplitted[urlsplitted.length-1];
     }
 
     public String[] readConfig() throws IOException, SAXException, ParserConfigurationException {
@@ -146,6 +142,7 @@ public class FrontServlet extends HttpServlet {
         }
         return list;
     }
+
     public List<File> packagesFiles(String[] packages) throws Exception {  // String[] to List<String>
         List<File> files = new ArrayList<>();
 
@@ -159,7 +156,7 @@ public class FrontServlet extends HttpServlet {
         }
         return files;
     }
-    
+
     private void fillMappingUrls(String[] packages) throws Exception {
         this.setMappingUrls(new HashMap<String, Mapping>());
 
@@ -190,5 +187,6 @@ public class FrontServlet extends HttpServlet {
                 }
             }
         }
+        //System.out.println("Mapping length: "+this.getMappingUrls().size());
     }
 }

@@ -1,22 +1,35 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package etu1986.framework;
 
-/**
- *
- * @author hardy
- */
+import java.util.HashMap;
+
 public class ModelView {
-    String url;
+    String view;
+    HashMap<String, Object> data = new HashMap<>();
 
-    public String getUrl() {
-        return url;
+    public String getView() {
+        return view;
     }
 
-    public void setUrl(String url) {
-        this.url = url;
+    public void setView(String view) {
+        this.view = view;
     }
-    
+
+    public HashMap<String, Object> getData(){
+        return this.data;
+    }
+    public void setData(HashMap<String, Object> data){
+        this.data = data;
+    }
+    public void addItem(String key, Object value){
+        this.getData().put(key, value);
+    }
+
+    public ModelView() {
+
+    }
+
+    public ModelView(String view, HashMap<String,Object> data) {
+        this.setView(view);
+        this.setData(data);
+    }
 }
