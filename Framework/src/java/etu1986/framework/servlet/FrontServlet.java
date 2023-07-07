@@ -118,6 +118,5 @@ public class FrontServlet extends HttpServlet {
                 }
             }
         }
-        System.out.println("Mapping length: "+this.getMappingUrls().size());
     }
 }
